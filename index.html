@@ -7,10 +7,10 @@
     <style>
         body { font-family: Arial, sans-serif; text-align: center; padding: 20px; background-color: #f4f6f9; }
         .container { max-width: 400px; margin: auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        button { background-color: #007bff; color: white; border: none; padding: 12px 20px; font-size: 16px; border-radius: 5px; cursor: pointer; width: 100%; margin-top: 15px; }
-        button:hover { background-color: #0056b3; }
+        button { background-color: #28a745; color: white; border: none; padding: 12px 20px; font-size: 16px; border-radius: 5px; cursor: pointer; width: 100%; margin-top: 15px; font-weight: bold; }
+        button:hover { background-color: #218838; }
         input { margin: 15px 0; width: 100%; }
-        #status { margin-top: 20px; font-weight: bold; color: #333; }
+        #status { margin-top: 20px; font-weight: bold; color: #333; line-height: 1.5; }
     </style>
 </head>
 <body>
@@ -19,8 +19,9 @@
     <h2>🚨 UrbeIA</h2>
     <p>Reportar Ocorrência Urbana em Tempo Real</p>
     
-    <input type="file" id="fotoInput" accept="image/*">
-    <button onclick="dispararFluxoUrbeIA()">Enviar Alerta com GPS</button>
+    <input type="file" id="fotoInput" accept="image/*" capture="environment">
+    
+    <button onclick="dispararFluxoUrbeIA()">Tirar Foto & Enviar Alerta</button>
 
     <div id="status"></div>
 </div>
@@ -31,7 +32,7 @@
         const statusDiv = document.getElementById('status');
         
         if (fotoInput.files.length === 0) {
-            alert("Por favor, tire ou selecione uma foto antes de enviar.");
+            alert("Por favor, capture uma foto utilizando a câmera antes de enviar.");
             return;
         }
 
@@ -42,7 +43,7 @@
             const lat = position.coords.latitude;
             const lng = position.coords.longitude;
 
-            statusDiv.innerHTML = "⏳ Conectando à UrbeIA na nuvem...";
+            statusDiv.innerHTML = "⏳ Conectando à UrbeIA e processando imagem na nuvem...";
 
             // 2. Prepara o pacote de dados (Multipart Form Data)
             const formData = new FormData();
@@ -62,7 +63,7 @@
                 const resultado = await response.json();
                 
                 // 4. Exibe o veredito na tela do celular
-                statusDiv.innerHTML = `✅ Sucesso!<br>Detected: <b>${resultado.objeto_detectado}</b> (${resultado.confianca_percentual}%)<br>Telegram Notificado! 🚀`;
+                statusDiv.innerHTML = `✅ Sucesso!<br>Detectado: <b>${resultado.objeto_detectado}</b> (${resultado.confianca_percentual}%)<br>Telegram Notificado! 🚀`;
             } catch (erro) {
                 statusDiv.innerHTML = "❌ Erro ao processar dados no servidor.";
                 console.error(erro);
