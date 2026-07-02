@@ -9,16 +9,22 @@
         .container { max-width: 420px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
         h2 { color: #007bff; margin-bottom: 5px; }
         .subtitle { color: #666; font-size: 14px; margin-bottom: 25px; }
-        button { background-color: #28a745; color: white; border: none; padding: 14px 20px; font-size: 16px; border-radius: 6px; cursor: pointer; width: 100%; margin-top: 15px; font-weight: bold; transition: background 0.2s; }
-        button:hover { background-color: #218838; }
-        input[type="file"] { margin: 15px 0; width: 100%; font-size: 14px; }
+        
+        /* Estilização dos Botões */
+        button { border: none; padding: 14px 20px; font-size: 16px; border-radius: 6px; cursor: pointer; width: 100%; font-weight: bold; transition: background 0.2s; }
+        .btn-foto { background-color: #007bff; color: white; margin-bottom: 8px; }
+        .btn-foto:hover { background-color: #0056b3; }
+        .btn-enviar { background-color: #28a745; color: white; margin-top: 15px; }
+        .btn-enviar:hover { background-color: #218838; }
+        
+        /* Feedback de arquivo anexado */
+        .status-foto { font-size: 13px; color: #666; margin-bottom: 20px; font-style: italic; }
+        
         #status { margin-top: 25px; font-size: 15px; line-height: 1.6; }
         .relatorio-box { text-align: left; background: #f8f9fa; padding: 18px; border-radius: 8px; border-left: 5px solid #28a745; margin-top: 15px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.05); }
         .relatorio-box p { margin: 8px 0; font-size: 14px; }
         .status-aberto { color: #d97706; font-weight: bold; background: #fef3c7; padding: 2px 6px; border-radius: 4px; }
         .alerta-box { text-align: center; background: #fff7ed; padding: 18px; border-radius: 8px; border-left: 5px solid #ea580c; margin-top: 15px; color: #c2410c; font-size: 14px; font-weight: 500; }
-        
-        /* 📸 Nova estilização para a miniatura da foto anexada */
         .foto-preview { width: 100%; max-height: 180px; object-fit: cover; border-radius: 6px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
     </style>
 </head>
@@ -28,13 +34,28 @@
     <h2>🚨 UrbeIA</h2>
     <div class="subtitle">Zeladoria Urbana de Volta Redonda</div>
     
-    <input type="file" id="fotoInput" accept="image/*" capture="environment">
-    <button onclick="dispararFluxoUrbeIA()">Tirar Foto & Enviar Reclamação</button>
+    <input type="file" id="fotoInput" accept="image/*" capture="environment" style="display: none;" onchange="atualizarFeedbackFoto()">
+    
+    <button class="btn-foto" onclick="document.getElementById('fotoInput').click()">📸 Tirar Foto</button>
+    <div id="feedbackFoto" class="status-foto">Nenhuma foto capturada</div>
+    
+    <button class="btn-enviar" onclick="dispararFluxoUrbeIA()">Enviar Reclamação</button>
 
     <div id="status"></div>
 </div>
 
 <script>
+    // Função para avisar o usuário que a foto foi registrada com sucesso
+    function atualizarFeedbackFoto() {
+        const input = document.getElementById('fotoInput');
+        const feedback = document.getElementById('feedbackFoto');
+        if (input.files.length > 0) {
+            feedback.innerHTML = "✅ Foto capturada com sucesso!";
+            feedback.style.color = "#28a745";
+            feedback.style.fontWeight = "bold";
+        }
+    }
+
     async function dispararFluxoUrbeIA() {
         const fotoInput = document.getElementById('fotoInput');
         const statusDiv = document.getElementById('status');
@@ -77,10 +98,8 @@
                     return;
                 }
                 
-                // ⚡ MÁGICA DO UX: Cria um link temporário local para a foto do celular do munícipe
                 const urlFotoLocal = URL.createObjectURL(fotoInput.files[0]);
                 
-                // 🟢 Renderiza o relatório incluindo a imagem capturada
                 statusDiv.innerHTML = `
                     <div class="relatorio-box">
                         <h4 style="color: #28a745; margin-top: 0; margin-bottom: 15px; text-align: center;">✅ Reclamação Registrada!</h4>
