@@ -88,10 +88,22 @@
 
                 const resultado = await response.json();
                 
+                // 🛑 Tratamento 1: Fora do Limite Municipal
                 if (resultado.status_requisicao === "Fora do Limite") {
                     statusDiv.innerHTML = `
                         <div class="alerta-box">
                             ⚠️ <b>Limite Territorial Rejeitado</b><br><br>
+                            ${resultado.mensagem}
+                        </div>
+                    `;
+                    return;
+                }
+
+                // 🔄 NOVO: Tratamento 2: Ocorrência Duplicada na mesma rua
+                if (resultado.status_requisicao === "Duplicado") {
+                    statusDiv.innerHTML = `
+                        <div class="alerta-box" style="border-left-color: #007bff; background-color: #f0f7ff; color: #004085;">
+                            🔄 <b>Zeladoria já Notificada</b><br><br>
                             ${resultado.mensagem}
                         </div>
                     `;
