@@ -10,16 +10,20 @@
         h2 { color: #007bff; margin-bottom: 5px; }
         .subtitle { color: #666; font-size: 14px; margin-bottom: 25px; }
         
-        /* Estilização dos Botões */
+        /* Botoes */
         button { border: none; padding: 14px 20px; font-size: 16px; border-radius: 6px; cursor: pointer; width: 100%; font-weight: bold; transition: background 0.2s; }
         .btn-foto { background-color: #007bff; color: white; margin-bottom: 8px; }
         .btn-foto:hover { background-color: #0056b3; }
         .btn-enviar { background-color: #28a745; color: white; margin-top: 15px; }
         .btn-enviar:hover { background-color: #218838; }
         
-        /* Feedback de arquivo anexado */
-        .status-foto { font-size: 13px; color: #666; margin-bottom: 20px; font-style: italic; }
+        /* Botao inline de copiar e botao de download */
+        .btn-copiar { display: inline-block; width: auto; padding: 4px 10px; font-size: 12px; margin-left: 8px; background-color: #e9ecef; color: #495057; border: 1px solid #ced4da; border-radius: 4px; vertical-align: middle; }
+        .btn-copiar:hover { background-color: #dee2e6; }
+        .btn-download { background-color: #6c757d; color: white; margin-top: 15px; font-size: 14px; padding: 10px; }
+        .btn-download:hover { background-color: #5a6268; }
         
+        .status-foto { font-size: 13px; color: #666; margin-bottom: 20px; font-style: italic; }
         #status { margin-top: 25px; font-size: 15px; line-height: 1.6; }
         .relatorio-box { text-align: left; background: #f8f9fa; padding: 18px; border-radius: 8px; border-left: 5px solid #28a745; margin-top: 15px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.05); }
         .relatorio-box p { margin: 8px 0; font-size: 14px; }
@@ -45,7 +49,6 @@
 </div>
 
 <script>
-    // Função para avisar o usuário que a foto foi registrada com sucesso
     function atualizarFeedbackFoto() {
         const input = document.getElementById('fotoInput');
         const feedback = document.getElementById('feedbackFoto');
@@ -54,6 +57,41 @@
             feedback.style.color = "#28a745";
             feedback.style.fontWeight = "bold";
         }
+    }
+
+    // 📋 Função para copiar o protocolo para a área de transferência do celular
+    function copiarProtocolo(texto) {
+        navigator.clipboard.writeText(texto).then(() => {
+            const btn = document.getElementById('btnCopiarId');
+            btn.innerHTML = "✅ Copiado!";
+            setTimeout(() => { btn.innerHTML = "📋 Copiar"; }, 2000);
+        }).catch(err => {
+            alert("Não foi possível copiar automaticamente. Selecione o texto para copiar.");
+        });
+    }
+
+    // 💾 Função para baixar o comprovante em formato de texto (.txt) nativamente
+    function baixarComprovanteTxt(protocolo, alvo, secretaria, endereco) {
+        const dataHora = new Date().toLocaleString('pt-BR');
+        const conteudoTXT = 
+            `=========================================\n` +
+            `       COMPROVANTE DE SOLICITAÇÃO        \n` +
+            `                URBEIA                   \n` +
+            `       PREFEITURA DE VOLTA REDONDA       \n` +
+            `=========================================\n\n` +
+            `📄 PROTOCOLO: ${protocolo}\n` +
+            `📅 DATA/HORA: ${dataHora}\n` +
+            `🔍 PROBLEMA DETECTADO: ${alvo}\n` +
+            `🏛️ DESTINO: ${secretaria}\n` +
+            `📍 LOCALIZAÇÃO: ${endereco}\n\n` +
+            `=========================================\n` +
+            `Agradecemos a sua colaboração com a nossa cidade!`;
+
+        const blob = new Blob([conteudoTXT], { type: "text/plain;charset=utf-8" });
+        const linkTemp = document.createElement("a");
+        linkTemp.href = URL.createObjectURL(blob);
+        linkTemp.download = `UrbeIA_Protocolo_${protocolo}.txt`;
+        linkTemp.click();
     }
 
     async function dispararFluxoUrbeIA() {
@@ -88,7 +126,6 @@
 
                 const resultado = await response.json();
                 
-                // 🛑 Tratamento 1: Fora do Limite Municipal
                 if (resultado.status_requisicao === "Fora do Limite") {
                     statusDiv.innerHTML = `
                         <div class="alerta-box">
@@ -98,8 +135,7 @@
                     `;
                     return;
                 }
-
-                // 🔄 NOVO: Tratamento 2: Ocorrência Duplicada na mesma rua
+                
                 if (resultado.status_requisicao === "Duplicado") {
                     statusDiv.innerHTML = `
                         <div class="alerta-box" style="border-left-color: #007bff; background-color: #f0f7ff; color: #004085;">
@@ -112,18 +148,22 @@
                 
                 const urlFotoLocal = URL.createObjectURL(fotoInput.files[0]);
                 
+                // 🟢 Renderização com as novas interações de Proteção de Dados
                 statusDiv.innerHTML = `
                     <div class="relatorio-box">
                         <h4 style="color: #28a745; margin-top: 0; margin-bottom: 15px; text-align: center;">✅ Reclamação Registrada!</h4>
                         
                         <img src="${urlFotoLocal}" class="foto-preview" alt="Evidência Urbana">
 
-                        <p><b>📄 Protocolo:</b> <code>${resultado.protocolo}</code></p>
+                        <p><b>📄 Protocolo:</b> <code>${resultado.protocolo}</code> <button class="btn-copiar" id="btnCopiarId" onclick="copiarProtocolo('${resultado.protocolo}')">📋 Copiar</button></p>
+                        
                         <p><b>🔍 Análise Visual:</b> ${resultado.ia_insights.alvo}</p>
                         <p><b>📊 Grau de Certeza:</b> ${resultado.ia_insights.certeza}</p>
                         <p><b>🏛️ Encaminhado:</b> ${resultado.encaminhado_para}</p>
                         <p><b>💼 Status:</b> <span class="status-aberto">${resultado.status_chamado}</span></p>
                         <p><b>📍 Endereço:</b> <span style="font-size: 13px; color: #555;">${resultado.endereco_identificado}</span></p>
+                        
+                        <button class="btn-download" onclick="baixarComprovanteTxt('${resultado.protocolo}', '${resultado.ia_insights.alvo}', '${resultado.encaminhado_para}', '${resultado.endereco_identificado}')">💾 Salvar Comprovante (TXT)</button>
                     </div>
                     <p style="color: #155724; font-size: 13px; font-weight: bold; margin-top: 15px;">🚀 Central de Volta Redonda Notificada!</p>
                 `;
