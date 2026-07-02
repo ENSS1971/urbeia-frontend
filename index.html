@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>UrbeIA - Portal do Munícipe</title>
+    <title>UrbeIA - Portal do Munícipe (Volta Redonda)</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; padding: 20px; background-color: #f4f6f9; color: #333; }
         .container { max-width: 420px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
@@ -16,16 +16,16 @@
         .relatorio-box { text-align: left; background: #f8f9fa; padding: 18px; border-radius: 8px; border-left: 5px solid #28a745; margin-top: 15px; box-shadow: inset 0 1px 3px rgba(0,0,0,0.05); }
         .relatorio-box p { margin: 8px 0; font-size: 14px; }
         .status-aberto { color: #d97706; font-weight: bold; background: #fef3c7; padding: 2px 6px; border-radius: 4px; }
+        .alerta-box { text-align: center; background: #fff7ed; padding: 18px; border-radius: 8px; border-left: 5px solid #ea580c; margin-top: 15px; color: #c2410c; font-size: 14px; font-weight: 500; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h2>🚨 UrbeIA</h2>
-    <div class="subtitle">Sistema de Zeladoria e Inteligência Urbana</div>
+    <div class="subtitle">Zeladoria Urbana de Volta Redonda</div>
     
     <input type="file" id="fotoInput" accept="image/*" capture="environment">
-    
     <button onclick="dispararFluxoUrbeIA()">Tirar Foto & Enviar Reclamação</button>
 
     <div id="status"></div>
@@ -43,21 +43,18 @@
 
         statusDiv.innerHTML = "<span style='color: #666;'>📍 Obtendo coordenadas do GPS...</span>";
 
-        // 1. Captura a geolocalização do smartphone do Munícipe
         navigator.geolocation.getCurrentPosition(async (position) => {
             const lat = position.coords.latitude;
             const lng = position.coords.longitude;
 
-            statusDiv.innerHTML = "<span style='color: #007bff;'>⏳ Processando imagem e gerando protocolo na nuvem...</span>";
+            statusDiv.innerHTML = "<span style='color: #007bff;'>⏳ Processando imagem e validando território...</span>";
 
-            // 2. Prepara os dados para o envio (Multipart Form)
             const formData = new FormData();
             formData.append("file", fotoInput.files[0]);
             formData.append("latitude", lat);
             formData.append("longitude", lng);
 
             try {
-                // 3. Dispara para o motor do Google Cloud Run
                 const response = await fetch("https://urbeia-cloudrun-swct4vyilq-ew.a.run.app/analisar", {
                     method: "POST",
                     body: formData
@@ -67,7 +64,18 @@
 
                 const resultado = await response.json();
                 
-                // 4. 💡 MÁGICA AQUI: Renderiza o relatório completo na tela do cidadão com as novas chaves
+                // 🛑 MÁGICA AQUI: Exibe a mensagem customizada caso esteja fora do município!
+                if (resultado.status_requisicao === "Fora do Limite") {
+                    statusDiv.innerHTML = `
+                        <div class="alerta-box">
+                            ⚠️ <b>Limite Territorial Rejeitado</b><br><br>
+                            ${resultado.mensagem}
+                        </div>
+                    `;
+                    return;
+                }
+                
+                // 🟢 Fluxo normal caso seja morador de Volta Redonda
                 statusDiv.innerHTML = `
                     <div class="relatorio-box">
                         <h4 style="color: #28a745; margin-top: 0; margin-bottom: 15px; text-align: center;">✅ Reclamação Registrada!</h4>
@@ -76,8 +84,9 @@
                         <p><b>📊 Grau de Certeza:</b> ${resultado.ia_insights.certeza}</p>
                         <p><b>🏛️ Encaminhado:</b> ${resultado.encaminhado_para}</p>
                         <p><b>💼 Status:</b> <span class="status-aberto">${resultado.status_chamado}</span></p>
+                        <p><b>📍 Endereço:</b> <span style="font-size: 13px; color: #555;">${resultado.endereco_identificado}</span></p>
                     </div>
-                    <p style="color: #155724; font-size: 13px; font-weight: bold; margin-top: 15px;">🚀 Central de Controle e Telegram Notificados!</p>
+                    <p style="color: #155724; font-size: 13px; font-weight: bold; margin-top: 15px;">🚀 Central de Volta Redonda Notificada!</p>
                 `;
 
             } catch (erro) {
@@ -87,7 +96,7 @@
 
         }, (error) => {
             statusDiv.innerHTML = "<span style='color: #dc3545; font-weight: bold;'>❌ Permissão de GPS necessária.</span>";
-            alert("Para abrir um chamado, a UrbeIA precisa que você autorize o uso do GPS do aparelho.");
+            alert("A UrbeIA precisa do GPS para garantir que o chamado pertence a Volta Redonda.");
         });
     }
 </script>
