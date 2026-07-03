@@ -23,7 +23,6 @@
         .protocolo-badge { font-family: monospace; background: #e2e8f0; padding: 3px 6px; border-radius: 4px; font-size: 12px; font-weight: bold; }
         .status-badge { font-size: 12px; font-weight: bold; padding: 4px 8px; border-radius: 4px; }
         
-        /* Cores de Status */
         .status-aberto { background-color: #fef3c7; color: #d97706; }
         .status-fiscalizacao { background-color: #e0f2fe; color: #0369a1; }
         .status-resolvido { background-color: #dcfce7; color: #15803d; }
@@ -31,6 +30,9 @@
         
         .card-body p { margin: 6px 0; font-size: 14px; line-height: 1.4; }
         .maps-link { color: #2563eb; font-weight: bold; text-decoration: none; font-size: 13px; }
+        
+        .foto-admin { width: 100%; height: 180px; object-fit: cover; border-radius: 6px; margin: 10px 0; border: 1px solid #e2e8f0; background-color: #f8fafc; }
+        .sem-foto { height: 180px; display: flex; align-items: center; justify-content: center; background: #f1f5f9; color: #94a3b8; font-size: 13px; border-radius: 6px; margin: 10px 0; font-style: italic; border: 1px dashed #cbd5e1; text-align: center; }
         
         .action-area { border-top: 1px dashed #e2e8f0; margin-top: 15px; padding-top: 15px; }
         .btn-salvar { background-color: #2563eb; color: white; border: none; padding: 10px 15px; font-weight: bold; border-radius: 6px; cursor: pointer; width: 100%; font-size: 14px; margin-top: 10px; }
@@ -64,7 +66,6 @@
 <script>
     const API_URL = "https://urbeia-cloudrun-swct4vyilq-ew.a.run.app";
 
-    // Carrega e desenha as ocorrências na tela com base no filtro
     async function carregarChamadosPrefeitura() {
         const secretariaSelecionada = document.getElementById('filtroSecretaria').value;
         const contenedor = document.getElementById('listaContenedor');
@@ -72,26 +73,35 @@
         contenedor.innerHTML = "<p style='color: #666;'>⏳ Sincronizando ocorrências com o MongoDB Atlas...</p>";
         
         try {
-            const response = await fetch(`${API_URL}/admin/ocorrencias?secretaria=${secretariaSelecionaria = secretariaSelecionada}`);
+            // ✅ CORRIGIDO: Remoção da variável duplicada na URL do fetch
+            const response = await fetch(`${API_URL}/admin/ocorrencias?secretaria=${secretariaSelecionada}`);
             const chamados = await response.json();
             
             if (chamados.length === 0) {
-                contenedor.innerHTML = "<p style='color: #666; font-weight: bold;'>📥 Nenhuma ocorrência em aberto encontrada para esta secretaria.</p>";
+                contenedor.innerHTML = "<p style='color: #666; font-weight: bold;'>📥 Nenhuma ocorrência cadastrada encontrada para esta secretaria.</p>";
                 return;
             }
             
             let htmlCards = "";
             
             chamados.forEach(item => {
-                // Define a cor visual com base no status salvo no banco
                 let classeStatus = "status-aberto";
                 if(item.status_chamado.includes("Fiscalizacao")) classeStatus = "status-fiscalizacao";
                 if(item.status_chamado.includes("Resolvido")) classeStatus = "status-resolvido";
                 if(item.status_chamado.includes("Superior")) classeStatus = "status-superior";
                 
-                // Monta o link dinâmico do Google Maps usando as coordenadas salvas
-                const coords = item.localizacao.coordinates;
-                const linkMaps = `http://maps.google.com/?q=${coords[1]},${coords[0]}`;
+                // ✅ CORRIGIDO: Sintaxe limpa da interpolação de string para o Google Maps
+                let linkMaps = "#";
+                if (item.localizacao && item.localizacao.coordinates) {
+                    const coords = item.localizacao.coordinates;
+                    linkMaps = `https://www.google.com/maps/search/?api=1&query=${coords[1]},${coords[0]}`;
+                }
+
+                // Renderização condicional estável da imagem em Base64
+                let tagFoto = `<div class="sem-foto">Evidência fotográfica indisponível para registros antigos</div>`;
+                if (item.foto_base64 && item.foto_base64.trim() !== "") {
+                    tagFoto = `<img src="data:image/jpeg;base64,${item.foto_base64}" class="foto-admin" alt="Evidência Urbana">`;
+                }
 
                 htmlCards += `
                     <div class="card" style="border-left-color: ${classeStatus === 'status-resolvido' ? '#22c55e' : classeStatus === 'status-superior' ? '#ec4899' : '#3b82f6'}">
@@ -100,6 +110,8 @@
                                 <span class="protocolo-badge">📄 ${item.protocolo}</span>
                                 <span class="status-badge ${classeStatus}">${item.status_chamado}</span>
                             </div>
+                            
+                            ${tagFoto}
                             
                             <div class="card-body">
                                 <p><b>🔍 Objeto Identificado:</b> ${item.objeto_detectado} (${item.confianca.toFixed(1)}%)</p>
@@ -135,11 +147,11 @@
             contenedor.innerHTML = htmlCards;
             
         } catch (erro) {
-            contenedor.innerHTML = "<p style='color: #dc3545; font-weight: bold;'>❌ Erro ao sincronizar dados administrativos.</p>";
+            contenedor.innerHTML = "<p style='color: #dc3545; font-weight: bold;'>❌ Erro ao sincronizar dados administrativos com a UrbeIA.</p>";
+            console.error(erro);
         }
     }
 
-    // Envia as atualizações do fiscal para salvar no MongoDB Atlas
     async function atualizarChamadoPrefeitura(protocolo) {
         const novoStatus = document.getElementById(`status-${protocolo}`).value;
         const observacoes = document.getElementById(`obs-${protocolo}`).value.trim();
@@ -159,7 +171,7 @@
             
             if (response.ok) {
                 alert(`Protocolo ${protocolo} despachado e atualizado no MongoDB com sucesso!`);
-                carregarChamadosPrefeitura(); // Recarrega os cartões com os novos dados
+                carregarChamadosPrefeitura();
             } else {
                 alert("Falha ao salvar despacho.");
             }
@@ -168,7 +180,6 @@
         }
     }
 
-    // Inicialização automática ao entrar na página
     window.onload = carregarChamadosPrefeitura;
 </script>
 
