@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UrbeIA - Painel de Gestão Operacional (Volta Redonda)</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f1f5f9; padding: 20px; color: #333; margin: 0; }
+        .navbar { background-color: #1e3a8a; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .navbar h2 { margin: 0; font-size: 20px; }
+        .main-container { max-width: 1000px; margin: 30px auto; padding: 0 20px; }
+        
+        .filtro-box { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 25px; display: flex; align-items: center; gap: 15px; }
+        select, textarea, input { padding: 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 14px; box-sizing: border-box; }
+        select { background: white; cursor: pointer; }
+        
+        .grid-chamados { display: grid; grid-template-columns: 1fr; gap: 20px; }
+        @media(min-width: 768px) { .grid-chamados { grid-template-columns: 1fr 1fr; } }
+        
+        .card { background: white; border-radius: 8px; border-left: 6px solid #3b82f6; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 20px; display: flex; flex-direction: column; justify-content: space-between; transition: transform 0.2s; }
+        .card:hover { transform: translateY(-2px); }
+        .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+        .protocolo-badge { font-family: monospace; background: #e2e8f0; padding: 3px 6px; border-radius: 4px; font-size: 12px; font-weight: bold; }
+        .status-badge { font-size: 12px; font-weight: bold; padding: 4px 8px; border-radius: 4px; }
+        
+        /* Cores de Status */
+        .status-aberto { background-color: #fef3c7; color: #d97706; }
+        .status-fiscalizacao { background-color: #e0f2fe; color: #0369a1; }
+        .status-resolvido { background-color: #dcfce7; color: #15803d; }
+        .status-superior { background-color: #fce7f3; color: #b70860; }
+        
+        .card-body p { margin: 6px 0; font-size: 14px; line-height: 1.4; }
+        .maps-link { color: #2563eb; font-weight: bold; text-decoration: none; font-size: 13px; }
+        
+        .action-area { border-top: 1px dashed #e2e8f0; margin-top: 15px; padding-top: 15px; }
+        .btn-salvar { background-color: #2563eb; color: white; border: none; padding: 10px 15px; font-weight: bold; border-radius: 6px; cursor: pointer; width: 100%; font-size: 14px; margin-top: 10px; }
+        .btn-salvar:hover { background-color: #1d4ed8; }
+        
+        .obs-area { width: 100%; height: 60px; margin-top: 8px; resize: none; }
+        .checkbox-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 13px; font-weight: 500; color: #475569; }
+    </style>
+</head>
+<body>
+
+<div class="navbar">
+    <h2>🏛️ UrbeIA — Gestão de Zeladoria</h2>
+    <div style="font-size: 14px; font-weight: 500;">Painel do Fiscal Interno</div>
+</div>
+
+<div class="main-container">
+    <div class="filtro-box">
+        <label style="font-weight: bold; color: #1e3a8a;">Filtrar por Secretaria Destinatária:</label>
+        <select id="filtroSecretaria" onchange="carregarChamadosPrefeitura()">
+            <option value="Todas">📥 Exibir Todas as Demandas</option>
+            <option value="Secretaria de Infraestrutura e Servicos Urbanos">Infraestrutura e Serviços Urbanos</option>
+            <option value="Secretaria de Transito e Mobilidade Urbana">Trânsito e Mobilidade Urbana</option>
+            <option value="Secretaria de Meio Ambiente e Protecao Animal">Meio Ambiente e Proteção Animal</option>
+        </select>
+    </div>
+
+    <div class="grid-chamados" id="listaContenedor"></div>
+</div>
+
+<script>
+    const API_URL = "https://urbeia-cloudrun-swct4vyilq-ew.a.run.app";
+
+    // Carrega e desenha as ocorrências na tela com base no filtro
+    async function carregarChamadosPrefeitura() {
+        const secretariaSelecionada = document.getElementById('filtroSecretaria').value;
+        const contenedor = document.getElementById('listaContenedor');
+        
+        contenedor.innerHTML = "<p style='color: #666;'>⏳ Sincronizando ocorrências com o MongoDB Atlas...</p>";
+        
+        try {
+            const response = await fetch(`${API_URL}/admin/ocorrencias?secretaria=${secretariaSelecionaria = secretariaSelecionada}`);
+            const chamados = await response.json();
+            
+            if (chamados.length === 0) {
+                contenedor.innerHTML = "<p style='color: #666; font-weight: bold;'>📥 Nenhuma ocorrência em aberto encontrada para esta secretaria.</p>";
+                return;
+            }
+            
+            let htmlCards = "";
+            
+            chamados.forEach(item => {
+                // Define a cor visual com base no status salvo no banco
+                let classeStatus = "status-aberto";
+                if(item.status_chamado.includes("Fiscalizacao")) classeStatus = "status-fiscalizacao";
+                if(item.status_chamado.includes("Resolvido")) classeStatus = "status-resolvido";
+                if(item.status_chamado.includes("Superior")) classeStatus = "status-superior";
+                
+                // Monta o link dinâmico do Google Maps usando as coordenadas salvas
+                const coords = item.localizacao.coordinates;
+                const linkMaps = `http://maps.google.com/?q=${coords[1]},${coords[0]}`;
+
+                htmlCards += `
+                    <div class="card" style="border-left-color: ${classeStatus === 'status-resolvido' ? '#22c55e' : classeStatus === 'status-superior' ? '#ec4899' : '#3b82f6'}">
+                        <div>
+                            <div class="card-header">
+                                <span class="protocolo-badge">📄 ${item.protocolo}</span>
+                                <span class="status-badge ${classeStatus}">${item.status_chamado}</span>
+                            </div>
+                            
+                            <div class="card-body">
+                                <p><b>🔍 Objeto Identificado:</b> ${item.objeto_detectado} (${item.confianca.toFixed(1)}%)</p>
+                                <p><b>📍 Endereço Local:</b> ${item.endereco_local}</p>
+                                <p><b>🏛️ Responsável:</b> <span style="font-size:12px; color:#475569;">${item.encaminhado_para}</span></p>
+                                <p><b>📅 Entrada:</b> ${item.data_registro}</p>
+                                <p><b>📢 Despachado p/ Superior:</b> <span>${item.superior_notificado}</span></p>
+                                <p style="margin-top:10px;"><a href="${linkMaps}" target="_blank" class="maps-link">🗺️ Abrir Rota no Google Maps</a></p>
+                            </div>
+                        </div>
+                        
+                        <div class="action-area">
+                            <label style="font-size: 13px; font-weight: bold;">Mudar Status Operacional:</label>
+                            <select id="status-${item.protocolo}" style="width:100%; margin-top:5px;">
+                                <option value="Aberto - Aguardando Fiscalizacao" ${item.status_chamado.includes("Aberto") ? "selected" : ""}>Aberto - Aguardando Fiscalização</option>
+                                <option value="Em Campo - Equipes em Fiscalizacao" ${item.status_chamado.includes("Campo") ? "selected" : ""}>Em Campo - Equipes em Fiscalização</option>
+                                <option value="Resolvido - Zeladoria Concluida" ${item.status_chamado.includes("Resolvido") ? "selected" : ""}>Resolvido - Zeladoria Concluída</option>
+                            </select>
+                            
+                            <textarea id="obs-${item.protocolo}" class="obs-area" placeholder="Escreva observações, laudos de campo ou motivos do despacho...">${item.observacoes_internas}</textarea>
+                            
+                            <div class="checkbox-row">
+                                <input type="checkbox" id="superior-${item.protocolo}" ${item.superior_notificado === "Sim" ? "checked" : ""}>
+                                <label for="superior-${item.protocolo}">🚨 Enviar para Superior / Ouvidoria Geral</label>
+                            </div>
+                            
+                            <button class="btn-salvar" onclick="atualizarChamadoPrefeitura('${item.protocolo}')">Salvar Despacho</button>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            contenedor.innerHTML = htmlCards;
+            
+        } catch (erro) {
+            contenedor.innerHTML = "<p style='color: #dc3545; font-weight: bold;'>❌ Erro ao sincronizar dados administrativos.</p>";
+        }
+    }
+
+    // Envia as atualizações do fiscal para salvar no MongoDB Atlas
+    async function atualizarChamadoPrefeitura(protocolo) {
+        const novoStatus = document.getElementById(`status-${protocolo}`).value;
+        const observacoes = document.getElementById(`obs-${protocolo}`).value.trim();
+        const encaminharSuperior = document.getElementById(`superior-${protocolo}`).checked ? "Sim" : "Não";
+        
+        const formData = new FormData();
+        formData.append("protocolo", protocolo);
+        formData.append("novo_status", novoStatus);
+        formData.append("observacoes", observacoes);
+        formData.append("encaminhar_superior", encaminharSuperior);
+        
+        try {
+            const response = await fetch(`${API_URL}/admin/atualizar-status`, {
+                method: "POST",
+                body: formData
+            });
+            
+            if (response.ok) {
+                alert(`Protocolo ${protocolo} despachado e atualizado no MongoDB com sucesso!`);
+                carregarChamadosPrefeitura(); // Recarrega os cartões com os novos dados
+            } else {
+                alert("Falha ao salvar despacho.");
+            }
+        } catch (erro) {
+            alert("Erro de conexão ao salvar.");
+        }
+    }
+
+    // Inicialização automática ao entrar na página
+    window.onload = carregarChamadosPrefeitura;
+</script>
+
+</body>
+</html>
