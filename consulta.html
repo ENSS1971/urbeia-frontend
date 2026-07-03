@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UrbeIA - Acompanhar Chamado (Volta Redonda)</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 20px; background-color: #f4f6f9; text-align: center; color: #333; }
+        .container { max-width: 420px; margin: auto; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); text-align: left; }
+        h2 { color: #007bff; text-align: center; margin-bottom: 5px; }
+        .subtitle { text-align: center; color: #666; font-size: 14px; margin-bottom: 25px; }
+        input { width: 100%; padding: 12px; margin: 8px 0 15px 0; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 15px; }
+        button { border: none; padding: 12px; font-size: 15px; border-radius: 6px; cursor: pointer; width: 100%; font-weight: bold; margin-top: 5px; }
+        .btn-buscar { background-color: #007bff; color: white; }
+        
+        /* 📁 Novo botão de upload do arquivo TXT */
+        .btn-arquivo { background-color: #6c757d; color: white; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .btn-arquivo:hover { background-color: #5a6268; }
+        
+        .btn-sim { background-color: #28a745; color: white; margin-bottom: 10px; }
+        .btn-nao { background-color: #6c757d; color: white; }
+        
+        /* Divisor visual elegante */
+        .divisor { text-align: center; margin: 15px 0; color: #aaa; font-size: 12px; font-weight: bold; display: flex; align-items: center; gap: 10px; }
+        .divisor::before, .divisor::after { content: ""; flex: 1; height: 1px; background: #ddd; }
+
+        .relatorio-box { background: #f8f9fa; padding: 18px; border-radius: 8px; border-left: 5px solid #007bff; margin-top: 20px; }
+        .status-badge { color: #d97706; font-weight: bold; background: #fef3c7; padding: 3px 8px; border-radius: 4px; font-size: 13px; }
+        .pergunta-box { background: #f0fdf4; border: 1px dashed #28a745; padding: 15px; border-radius: 8px; margin-top: 20px; text-align: center; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>🔍 Consulta UrbeIA</h2>
+    <div class="subtitle">Acompanhe sua solicitação em Volta Redonda</div>
+
+    <input type="file" id="arquivoTxtInput" accept=".txt" style="display: none;" onchange="processarUploadTxt()">
+    <button class="btn-arquivo" onclick="document.getElementById('arquivoTxtInput').click()">📁 Carregar Comprovante (.txt)</button>
+
+    <div class="divisor">OU DIGITE O NÚMERO</div>
+
+    <label id="labelProtocolo"><b>Número do Protocolo:</b></label>
+    <input type="text" id="protocoloInput" placeholder="Ex: 20260702173045">
+    <button class="btn-buscar" id="btnBuscar" onclick="buscarProtocolo()">Buscar Andamento</button>
+
+    <div id="resultadoPainel"></div>
+</div>
+
+<script>
+    let protocoloAtual = "";
+
+    // ⚡ MÁGICA GEO-DIGITAL: Lê o arquivo TXT local e extrai o protocolo via Regex
+    function processarUploadTxt() {
+        const fileInput = document.getElementById('arquivoTxtInput');
+        const painel = document.getElementById('resultadoPainel');
+
+        if (fileInput.files.length === 0) return;
+        
+        const arquivo = fileInput.files[0];
+        const leitor = new FileReader();
+
+        painel.innerHTML = "<p style='color: #666; text-align: center;'>⏳ Lendo arquivo de comprovante...</p>";
+
+        leitor.onload = function(evento) {
+            const textoConteudo = evento.target.result;
+            
+            # Procura pelo padrão 'PROTOCOLO: números' dentro do arquivo de texto
+            const regexProtocolo = /PROTOCOLO:\s*(\d+)/i;
+            const correspondencia = textoConteudo.match(regexProtocolo);
+
+            if (correspondencia && correspondencia[1]) {
+                const protocoloExtraido = correspondencia[1];
+                document.getElementById('protocoloInput').value = protocoloExtraido;
+                
+                // Dispara a busca no banco de dados automaticamente!
+                buscarProtocolo();
+            } else {
+                painel.innerHTML = "<p style='color: #dc3545; font-weight: bold; text-align: center;'>❌ Não encontramos um número de protocolo válido no arquivo enviado.</p>";
+            }
+        };
+
+        leitor.readAsText(arquivo);
+    }
+
+    async function buscarProtocolo() {
+        const protocolo = document.getElementById('protocoloInput').value.trim();
+        const painel = document.getElementById('resultadoPainel');
+
+        if (!protocolo) {
+            alert("Por favor, informe o número do protocolo.");
+            return;
+        }
+
+        painel.innerHTML = "<p style='color: #666; text-align: center;'>⏳ Procurando no banco de dados...</p>";
+
+        try {
+            const response = await fetch(`https://urbeia-cloudrun-swct4vyilq-ew.a.run.app/consultar/${protocolo}`);
+            
+            if (response.status === 404) {
+                painel.innerHTML = "<p style='color: #dc3545; font-weight: bold; text-align: center;'>❌ Protocolo não encontrado. Verifique o número.</p>";
+                return;
+            }
+
+            const chamado = await response.json();
+            protocoloAtual = chamado.protocolo;
+
+            let htmlAndamento = `
+                <div class="relatorio-box">
+                    <h4 style="margin-top:0; color:#007bff;">📋 Dados da Ocorrência</h4>
+                    <p><b>Status:</b> <span class="status-badge">${chamado.status_chamado}</span></p>
+                    <p><b>Problema:</b> ${chamado.objeto_detectado}</p>
+                    <p><b>Local:</b> ${chamado.endereco_local}</p>
+                    <p><b>Responsável:</b> <span style="font-size:13px; color:#555;">${chamado.encaminhado_para}</span></p>
+                    <p><b>Registrado em:</b> ${chamado.data_registro}</p>
+                </div>
+            `;
+
+            if (!chamado.ja_cadastrado) {
+                htmlAndamento += `
+                    <div class="pergunta-box" id="caixaPergunta">
+                        <p style="margin-top:0; font-weight:500;">Deseja se cadastrar para receber avisos quando o status deste chamado mudar?</p>
+                        <button class="btn-sim" onclick="exibirFormularioCadastro()">👍 Sim, quero receber avisos</button>
+                        <button class="btn-nao" onclick="document.getElementById('caixaPergunta').style.display='none'">👎 Não, apenas visualizar</button>
+                    </div>
+                    <div id="formCadastro" style="display: none; margin-top: 20px; background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                        <h4 style="margin-top:0;">📋 Dados de Notificação</h4>
+                        <input type="text" id="nomeInput" placeholder="Nome Completo">
+                        <input type="tel" id="telInput" placeholder="Telefone Celular (com DDD)">
+                        <input type="email" id="emailInput" placeholder="Seu Melhor E-mail">
+                        <button class="btn-sim" onclick="concluirCadastroMunicipe()">Concluir Cadastro</button>
+                    </div>
+                `;
+            } else {
+                htmlAndamento += `
+                    <p style="color: #28a745; font-size: 13px; font-weight: bold; text-align: center; margin-top: 15px;">🔔 Você já está cadastrado para receber notificações deste chamado!</p>
+                `;
+            }
+
+            painel.innerHTML = htmlAndamento;
+
+        } catch (erro) {
+            painel.innerHTML = "<p style='color: #dc3545; font-weight: bold; text-align: center;'>❌ Erro ao conectar com o servidor da UrbeIA.</p>";
+        }
+    }
+
+    function exibirFormularioCadastro() {
+        document.getElementById('caixaPergunta').style.display = 'none';
+        document.getElementById('formCadastro').style.display = 'block';
+    }
+
+    async function concluirCadastroMunicipe() {
+        const nome = document.getElementById('nomeInput').value.trim();
+        const tel = document.getElementById('telInput').value.trim();
+        const email = document.getElementById('emailInput').value.trim();
+
+        if (!nome || !tel || !email) {
+            alert("Por favor, preencha todos os campos do cadastro.");
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append("protocolo", protocoloAtual);
+        formData.append("nome", nome);
+        formData.append("telefone", tel);
+        formData.append("email", email);
+
+        try {
+            const response = await fetch("https://urbeia-cloudrun-swct4vyilq-ew.a.run.app/cadastrar-assinante", {
+                method: "POST",
+                body: formData
+            });
+
+            if (response.ok) {
+                alert("Cadastro realizado! Você será notificado sobre as ações da prefeitura.");
+                document.getElementById('formCadastro').innerHTML = "<p style='color: #28a745; font-weight: bold; text-align: center; margin: 0;'>✅ Cadastro de Notificação Ativo!</p>";
+            }
+        } catch (erro) {
+            alert("Falha ao salvar cadastro.");
+        }
+    }
+</script>
+
+</body>
+</html>
