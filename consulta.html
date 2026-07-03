@@ -13,8 +13,8 @@
         button { border: none; padding: 12px; font-size: 15px; border-radius: 6px; cursor: pointer; width: 100%; font-weight: bold; margin-top: 5px; }
         .btn-buscar { background-color: #007bff; color: white; }
         
-        /* 📁 Novo botão de upload do arquivo TXT */
-        .btn-arquivo { background-color: #6c757d; color: white; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        /* 📁 Botão de upload do arquivo TXT */
+        .btn-arquivo { background-color: #6c757d; color: white; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; }
         .btn-arquivo:hover { background-color: #5a6268; }
         
         .btn-sim { background-color: #28a745; color: white; margin-bottom: 10px; }
@@ -50,7 +50,7 @@
 <script>
     let protocoloAtual = "";
 
-    // ⚡ MÁGICA GEO-DIGITAL: Lê o arquivo TXT local e extrai o protocolo via Regex
+    // Corrigido: Uso de '//' para comentários em JavaScript
     function processarUploadTxt() {
         const fileInput = document.getElementById('arquivoTxtInput');
         const painel = document.getElementById('resultadoPainel');
@@ -65,7 +65,7 @@
         leitor.onload = function(evento) {
             const textoConteudo = evento.target.result;
             
-            # Procura pelo padrão 'PROTOCOLO: números' dentro do arquivo de texto
+            // Filtro por expressão regular para capturar o número do protocolo
             const regexProtocolo = /PROTOCOLO:\s*(\d+)/i;
             const correspondencia = textoConteudo.match(regexProtocolo);
 
@@ -73,7 +73,7 @@
                 const protocoloExtraido = correspondencia[1];
                 document.getElementById('protocoloInput').value = protocoloExtraido;
                 
-                // Dispara a busca no banco de dados automaticamente!
+                // Dispara a busca automaticamente
                 buscarProtocolo();
             } else {
                 painel.innerHTML = "<p style='color: #dc3545; font-weight: bold; text-align: center;'>❌ Não encontramos um número de protocolo válido no arquivo enviado.</p>";
@@ -133,10 +133,11 @@
                 `;
             } else {
                 htmlAndamento += `
-                    <p style="color: #28a745; font-size: 13px; font-weight: bold; text-align: center; margin-top: 15px;">🔔 Você já está cadastrado para receber notificações deste chamado!</p>
+                    <p style="color: #28a745; font-size: 13px; font-weight: bold; text-align: center; margin-top: 15px;">¼️ Você já está cadastrado para receber notificações deste chamado!</p>
                 `;
             }
 
+            // Corrigido: Atribuição limpa para o elemento HTML
             painel.innerHTML = htmlAndamento;
 
         } catch (erro) {
