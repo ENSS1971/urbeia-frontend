@@ -13,8 +13,11 @@
         button { border: none; padding: 12px; font-size: 15px; border-radius: 6px; cursor: pointer; width: 100%; font-weight: bold; margin-top: 5px; }
         .btn-buscar { background-color: #007bff; color: white; width: 100%; }
         
-        .btn-arquivo { background-color: #6c757d; color: white; margin-bottom: 15px; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; }
+        .btn-arquivo { background-color: #6c757d; color: white; margin-bottom: 5px; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; }
         .btn-arquivo:hover { background-color: #5a6268; }
+        
+        /* Estilo para o feedback do arquivo carregado */
+        .status-arquivo { font-size: 13px; color: #28a745; font-weight: bold; text-align: center; margin-top: 5px; margin-bottom: 15px; word-break: break-all; }
         
         .btn-sim { background-color: #28a745; color: white; margin-bottom: 10px; }
         .btn-nao { background-color: #6c757d; color: white; }
@@ -36,6 +39,8 @@
 
     <input type="file" id="arquivoTxtInput" accept=".txt" style="display: none;" onchange="processarUploadTxt()">
     <button class="btn-arquivo" onclick="document.getElementById('arquivoTxtInput').click()">📁 Carregar Comprovante (.txt)</button>
+    
+    <div id="feedbackArquivo" class="status-arquivo"></div>
 
     <div class="divisor">OU DIGITE O NÚMERO</div>
 
@@ -47,7 +52,6 @@
 </div>
 
 <script>
-    // 🚨 CAIXA PRETA DE DIAGNÓSTICO (Captura qualquer erro oculto do site)
     window.onerror = function(msg, url, line) {
         const painel = document.getElementById('resultadoPainel');
         if (painel) {
@@ -55,8 +59,7 @@
                 <div class="debug-box">
                     🚨 <b>Erro de Compilação do Script detectado!</b><br><br>
                     <b>Mensagem:</b> ${msg}<br>
-                    <b>Linha:</b> ${line}<br>
-                    <b>Dica:</b> O navegador encontrou um caractere inválido nesta linha.
+                    <b>Linha:</b> ${line}
                 </div>
             `;
         }
@@ -68,12 +71,16 @@
     function processarUploadTxt() {
         const fileInput = document.getElementById('arquivoTxtInput');
         const painel = document.getElementById('resultadoPainel');
+        const feedbackArquivo = document.getElementById('feedbackArquivo');
 
         if (fileInput.files.length === 0) return;
         
         const arquivo = fileInput.files[0];
         const leitor = new FileReader();
 
+        // Injeta o nome do arquivo logo abaixo do botão com um ícone de validação
+        feedbackArquivo.innerHTML = `📄 Arquivo carregado: ${arquivo.name}`;
+        
         painel.innerHTML = "<p style='color: #666; text-align: center;'>⏳ Lendo arquivo de comprovante...</p>";
 
         leitor.onload = function(evento) {
@@ -87,6 +94,7 @@
                 buscarProtocolo();
             } else {
                 painel.innerHTML = "<p style='color: #dc3545; font-weight: bold; text-align: center;'>❌ Não encontramos um número de protocolo válido no arquivo enviado.</p>";
+                feedbackArquivo.innerHTML = ""; // Limpa se der erro de leitura
             }
         };
 
