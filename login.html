@@ -31,14 +31,14 @@
     
     <label>Usuário Corporativo:</label>
     <div class="input-group-email">
-        <input type="text" id="usuarioLogin" placeholder="ex: eduardo.sepulveda">
+        <input type="text" id="usuarioLogin" placeholder="nome.usuario">
         <div class="email-sufixo">@voltaredonda.rj.gov.br</div>
     </div>
     
     <label>Senha de Acesso:</label>
     <input type="password" id="senhaLogin" placeholder="••••••••">
     
-    <button onclick="executarLogin()">Entrar no Panel</button>
+    <button onclick="executarLogin()">Entrar no Painel</button>
     
     <span class="alternar-link" onclick="alternarAbas(true)">Criar nova conta de Fiscal</span>
 </div>
@@ -52,7 +52,7 @@
 
     <label>Definir Usuário de E-mail:</label>
     <div class="input-group-email">
-        <input type="text" id="usuarioCad" placeholder="ex: nome.sobrenome">
+        <input type="text" id="usuarioCad" placeholder="nome.usuario">
         <div class="email-sufixo">@voltaredonda.rj.gov.br</div>
     </div>
     
@@ -101,7 +101,6 @@
         }
     }
 
-    // ✅ CORRIGIDO: Nome alterado de 'ejecutarCadastro' para 'executarCadastro'
     async function executarCadastro() {
         const nome = document.getElementById('nomeCad').value.trim();
         const usuario = document.getElementById('usuarioCad').value.trim().toLowerCase();
@@ -130,7 +129,6 @@
         } catch (e) { alert("Erro de conexão."); }
     }
 
-    // ✅ CORRIGIDO: Nome alterado de 'ejecutarLogin' para 'executarLogin'
     async function executarLogin() {
         const usuario = document.getElementById('usuarioLogin').value.trim().toLowerCase();
         const senha = document.getElementById('senhaLogin').value;
