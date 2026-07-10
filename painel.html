@@ -8,17 +8,17 @@
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f1f5f9; padding: 20px; color: #333; margin: 0; }
         .navbar { background-color: #1e3a8a; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         .navbar h2 { margin: 0; font-size: 20px; }
-        .main-container { max-width: 1000px; margin: 30px auto; padding: 0 20px; }
+        .user-info { font-size: 13px; text-align: right; }
+        .btn-logout { background: #ef4444; color: white; padding: 4px 10px; font-size: 11px; border: none; border-radius: 4px; cursor: pointer; margin-top: 4px; font-weight: bold; }
         
+        .main-container { max-width: 1000px; margin: 30px auto; padding: 0 20px; }
         .filtro-box { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 25px; display: flex; align-items: center; gap: 15px; }
         select, textarea, input { padding: 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 14px; box-sizing: border-box; }
-        select { background: white; cursor: pointer; }
         
         .grid-chamados { display: grid; grid-template-columns: 1fr; gap: 20px; }
         @media(min-width: 768px) { .grid-chamados { grid-template-columns: 1fr 1fr; } }
         
-        .card { background: white; border-radius: 8px; border-left: 6px solid #3b82f6; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 20px; display: flex; flex-direction: column; justify-content: space-between; transition: transform 0.2s; }
-        .card:hover { transform: translateY(-2px); }
+        .card { background: white; border-radius: 8px; border-left: 6px solid #3b82f6; box-shadow: 0 4px 12px rgba(0,0,0,0.05); padding: 20px; display: flex; flex-direction: column; justify-content: space-between; }
         .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
         .protocolo-badge { font-family: monospace; background: #e2e8f0; padding: 3px 6px; border-radius: 4px; font-size: 12px; font-weight: bold; }
         .status-badge { font-size: 12px; font-weight: bold; padding: 4px 8px; border-radius: 4px; }
@@ -30,32 +30,33 @@
         
         .card-body p { margin: 6px 0; font-size: 14px; line-height: 1.4; }
         .maps-link { color: #2563eb; font-weight: bold; text-decoration: none; font-size: 13px; }
-        
-        .foto-admin { width: 100%; height: 180px; object-fit: cover; border-radius: 6px; margin: 10px 0; border: 1px solid #e2e8f0; background-color: #f8fafc; }
+        .foto-admin { width: 100%; height: 180px; object-fit: cover; border-radius: 6px; margin: 10px 0; border: 1px solid #e2e8f0; }
         .sem-foto { height: 180px; display: flex; align-items: center; justify-content: center; background: #f1f5f9; color: #94a3b8; font-size: 13px; border-radius: 6px; margin: 10px 0; font-style: italic; border: 1px dashed #cbd5e1; text-align: center; }
         
         .action-area { border-top: 1px dashed #e2e8f0; margin-top: 15px; padding-top: 15px; }
         .btn-salvar { background-color: #2563eb; color: white; border: none; padding: 10px 15px; font-weight: bold; border-radius: 6px; cursor: pointer; width: 100%; font-size: 14px; margin-top: 10px; }
-        .btn-salvar:hover { background-color: #1d4ed8; }
-        
         .obs-area { width: 100%; height: 60px; margin-top: 8px; resize: none; }
-        .checkbox-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 13px; font-weight: 500; color: #475569; }
+        .checkbox-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 13px; color: #475569; }
     </style>
 </head>
 <body>
 
 <div class="navbar">
     <h2>🏛️ UrbeIA — Gestão de Zeladoria</h2>
-    <div style="font-size: 14px; font-weight: 500;">Painel do Fiscal Interno</div>
+    <div class="user-info">
+        <span id="labelNomeFiscal" style="font-weight: bold;">Carregando...</span><br>
+        <span id="labelSecFiscal" style="font-size: 11px; opacity: 0.8;">Secretaria</span><br>
+        <button class="btn-logout" onclick="executarLogout()">🚪 Sair do Painel</button>
+    </div>
 </div>
 
 <div class="main-container">
-    <div class="filtro-box">
+    <div class="filtro-box" id="caixaFiltroContainer">
         <label style="font-weight: bold; color: #1e3a8a;">Filtrar por Secretaria Destinatária:</label>
         <select id="filtroSecretaria" onchange="carregarChamadosPrefeitura()">
             <option value="Todas">📥 Exibir Todas as Demandas</option>
             <option value="Secretaria de Infraestrutura e Servicos Urbanos">Infraestrutura e Serviços Urbanos</option>
-            <option value="Secretaria de Transito e Mobilidade Urbana">Trânsito e Mobilidade Urbana</option>
+            <option value="Secretaria de Trânsito e Mobilidade Urbana">Trânsito e Mobilidade Urbana</option>
             <option value="Secretaria de Meio Ambiente e Protecao Animal">Meio Ambiente e Proteção Animal</option>
         </select>
     </div>
@@ -65,40 +66,71 @@
 
 <script>
     const API_URL = "https://urbeia-cloudrun-swct4vyilq-ew.a.run.app";
+    
+    // 🔒 BARREIRA DE SEGURANÇA LOCAL: Verifica se o usuário realizou o Login
+    const TOKEN = localStorage.getItem("urbeia_token");
+    const FISCAL_NOME = localStorage.getItem("urbeia_fiscal_nome");
+    const FISCAL_SEC = localStorage.getItem("urbeia_fiscal_sec");
+
+    if (!TOKEN) {
+        alert("Acesso restrito. Por favor, realize o login.");
+        window.location.href = "login.html";
+    } else {
+        document.getElementById('labelNomeFiscal').innerText = `👤 ${FISCAL_NOME}`;
+        document.getElementById('labelSecFiscal').innerText = FISCAL_SEC;
+        
+        // Se o fiscal for de um setor específico, esconde o seletor global para ele focar só no dele
+        if(FISCAL_SEC !== "Todas") {
+            document.getElementById('caixaFiltroContainer').style.display = 'none';
+        }
+    }
+
+    function executarLogout() {
+        localStorage.clear();
+        window.location.href = "login.html";
+    }
 
     async function carregarChamadosPrefeitura() {
-        const secretariaSelecionada = document.getElementById('filtroSecretaria').value;
         const contenedor = document.getElementById('listaContenedor');
+        // Define qual secretaria buscar (se for restrito, busca apenas a dele)
+        const secretariaSelecionada = FISCAL_SEC === "Todas" ? document.getElementById('filtroSecretaria').value : FISCAL_SEC;
         
-        contenedor.innerHTML = "<p style='color: #666;'>⏳ Sincronizando ocorrências com o MongoDB Atlas...</p>";
+        contenedor.innerHTML = "<p style='color: #666;'>⏳ Sincronizando ocorrências seguras...</p>";
         
         try {
-            // ✅ CORRIGIDO: Remoção da variável duplicada na URL do fetch
-            const response = await fetch(`${API_URL}/admin/ocorrencias?secretaria=${secretariaSelecionada}`);
+            // 🔒 ENVIO DO TOKEN: Passa a chave no cabeçalho (Headers) da requisição
+            const response = await fetch(`${API_URL}/admin/ocorrencias?secretaria=${secretariaSelecionada}`, {
+                method: "GET",
+                headers: { "Authorization": `Bearer ${TOKEN}` }
+            });
+            
+            if (response.status === 401) {
+                alert("Sessão expirada. Faça login novamente.");
+                executarLogout();
+                return;
+            }
+
             const chamados = await response.json();
             
             if (chamados.length === 0) {
-                contenedor.innerHTML = "<p style='color: #666; font-weight: bold;'>📥 Nenhuma ocorrência cadastrada encontrada para esta secretaria.</p>";
+                contenedor.innerHTML = "<p style='color: #666; font-weight: bold;'>📥 Nenhuma ocorrência pendente.</p>";
                 return;
             }
             
             let htmlCards = "";
-            
             chamados.forEach(item => {
                 let classeStatus = "status-aberto";
                 if(item.status_chamado.includes("Fiscalizacao")) classeStatus = "status-fiscalizacao";
                 if(item.status_chamado.includes("Resolvido")) classeStatus = "status-resolvido";
                 if(item.status_chamado.includes("Superior")) classeStatus = "status-superior";
                 
-                // ✅ CORRIGIDO: Sintaxe limpa da interpolação de string para o Google Maps
                 let linkMaps = "#";
                 if (item.localizacao && item.localizacao.coordinates) {
                     const coords = item.localizacao.coordinates;
                     linkMaps = `https://www.google.com/maps/search/?api=1&query=${coords[1]},${coords[0]}`;
                 }
 
-                // Renderização condicional estável da imagem em Base64
-                let tagFoto = `<div class="sem-foto">Evidência fotográfica indisponível para registros antigos</div>`;
+                let tagFoto = `<div class="sem-foto">Evidência fotográfica indisponível</div>`;
                 if (item.foto_base64 && item.foto_base64.trim() !== "") {
                     tagFoto = `<img src="data:image/jpeg;base64,${item.foto_base64}" class="foto-admin" alt="Evidência Urbana">`;
                 }
@@ -119,7 +151,7 @@
                                 <p><b>🏛️ Responsável:</b> <span style="font-size:12px; color:#475569;">${item.encaminhado_para}</span></p>
                                 <p><b>📅 Entrada:</b> ${item.data_registro}</p>
                                 <p><b>📢 Despachado p/ Superior:</b> <span>${item.superior_notificado}</span></p>
-                                <p style="margin-top:10px;"><a href="${linkMaps}" target="_blank" class="maps-link">🗺️ Abrir Rota no Google Maps</a></p>
+                                <p style="margin-top:10px;"><a href="${linkMaps}" target="_blank" class="maps-link">🗺️ Abrir no Google Maps</a></p>
                             </div>
                         </div>
                         
@@ -131,11 +163,11 @@
                                 <option value="Resolvido - Zeladoria Concluida" ${item.status_chamado.includes("Resolvido") ? "selected" : ""}>Resolvido - Zeladoria Concluída</option>
                             </select>
                             
-                            <textarea id="obs-${item.protocolo}" class="obs-area" placeholder="Escreva observações, laudos de campo ou motivos do despacho...">${item.observacoes_internas}</textarea>
+                            <textarea id="obs-${item.protocolo}" class="obs-area" placeholder="Escreva observações internas...">${item.observacoes_internas}</textarea>
                             
                             <div class="checkbox-row">
                                 <input type="checkbox" id="superior-${item.protocolo}" ${item.superior_notificado === "Sim" ? "checked" : ""}>
-                                <label for="superior-${item.protocolo}">🚨 Enviar para Superior / Ouvidoria Geral</label>
+                                <label for="superior-${item.protocolo}">🚨 Enviar para Ouvidoria Geral</label>
                             </div>
                             
                             <button class="btn-salvar" onclick="atualizarChamadoPrefeitura('${item.protocolo}')">Salvar Despacho</button>
@@ -143,12 +175,9 @@
                     </div>
                 `;
             });
-            
             contenedor.innerHTML = htmlCards;
-            
         } catch (erro) {
-            contenedor.innerHTML = "<p style='color: #dc3545; font-weight: bold;'>❌ Erro ao sincronizar dados administrativos com a UrbeIA.</p>";
-            console.error(erro);
+            contenedor.innerHTML = "<p style='color: #dc3545;'>❌ Erro ao carregar dados protegidos.</p>";
         }
     }
 
@@ -160,28 +189,26 @@
         const formData = new FormData();
         formData.append("protocolo", protocolo);
         formData.append("novo_status", novoStatus);
+        formData.append("formData", novoStatus);
         formData.append("observacoes", observacoes);
         formData.append("encaminhar_superior", encaminharSuperior);
         
         try {
+            // 🔒 ENVIO DO TOKEN: Protegendo a escrita de laudos e status
             const response = await fetch(`${API_URL}/admin/atualizar-status`, {
                 method: "POST",
-                body: formData
+                body: formData,
+                headers: { "Authorization": `Bearer ${TOKEN}` }
             });
             
             if (response.ok) {
-                alert(`Protocolo ${protocolo} despachado e atualizado no MongoDB com sucesso!`);
+                alert(`Protocolo ${protocolo} atualizado com sucesso!`);
                 carregarChamadosPrefeitura();
-            } else {
-                alert("Falha ao salvar despacho.");
-            }
-        } catch (erro) {
-            alert("Erro de conexão ao salvar.");
-        }
+            } else { alert("Falha ao salvar despacho."); }
+        } catch (erro) { alert("Erro de conexão."); }
     }
 
     window.onload = carregarChamadosPrefeitura;
 </script>
-
 </body>
 </html>

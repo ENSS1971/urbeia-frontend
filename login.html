@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UrbeIA - Acesso Restrito Backoffice</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f1f5f9; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; }
+        .login-box { background: white; padding: 35px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); width: 100%; max-width: 380px; }
+        h3 { color: #1e3a8a; margin-top: 0; text-align: center; margin-bottom: 5px; }
+        .subtitle { font-size: 13px; color: #64748b; text-align: center; margin-bottom: 25px; }
+        input, select { width: 100%; padding: 12px; margin: 8px 0 16px 0; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; font-size: 14px; }
+        button { background-color: #1e3a8a; color: white; border: none; padding: 12px; font-size: 15px; font-weight: bold; border-radius: 6px; cursor: pointer; width: 100%; transition: background 0.2s; }
+        button:hover { background-color: #1d4ed8; }
+        .alternar-link { display: block; text-align: center; margin-top: 15px; font-size: 13px; color: #2563eb; cursor: pointer; text-decoration: underline; }
+    </style>
+</head>
+<body>
+
+<div class="login-box" id="caixaLogin">
+    <h3>🏛️ UrbeIA Backoffice</h3>
+    <div class="subtitle">Acesso restrito para fiscais e secretarias</div>
+    
+    <label><b>E-mail Corporativo:</b></label>
+    <input type="email" id="emailLogin" placeholder="fiscal@voltaredonda.rj.gov.br">
+    
+    <label><b>Senha de Acesso:</b></label>
+    <input type="password" id="senhaLogin" placeholder="••••••••">
+    
+    <button onclick="executarLogin()">Entrar no Painel</button>
+    
+    <span class="alternar-link" onclick="alternarAbas(true)">Criar nova conta de Fiscal</span>
+</div>
+
+<div class="login-box" id="caixaCadastro" style="display: none;">
+    <h3>📋 Cadastro de Colaborador</h3>
+    <div class="subtitle">Insira os dados do novo agente municipal</div>
+    
+    <label><b>Nome Completo:</b></label>
+    <input type="text" id="nomeCad" placeholder="Nome do Agente">
+
+    <label><b>E-mail Corporativo:</b></label>
+    <input type="email" id="emailCad" placeholder="nome.sobrenome@vr.gov.br">
+    
+    <label><b>Senha Provisória:</b></label>
+    <input type="password" id="senhaCad" placeholder="Mínimo 6 caracteres">
+
+    <label><b>Secretaria / Lotação:</b></label>
+    <select id="secretariaCad">
+        <option value="Todas">Ouvidoria Geral (Vê Tudo)</option>
+        <option value="Secretaria de Infraestrutura e Servicos Urbanos">Infraestrutura e Serviços Urbanos</option>
+        <option value="Secretaria de Trânsito e Mobilidade Urbana">Trânsito e Mobilidade Urbana</option>
+        <option value="Secretaria de Meio Ambiente e Protecao Animal">Meio Ambiente e Proteção Animal</option>
+    </select>
+    
+    <button onclick="executarCadastro()">Cadastrar Agente</button>
+    
+    <span class="alternar-link" onclick="alternarAbas(false)">Voltar para a tela de Login</span>
+</div>
+
+<script>
+    const API_URL = "https://urbeia-cloudrun-swct4vyilq-ew.a.run.app";
+
+    function alternarAbas(mostrarCadastro) {
+        document.getElementById('caixaLogin').style.display = mostrarCadastro ? 'none' : 'block';
+        document.getElementById('caixaCadastro').style.display = mostrarCadastro ? 'block' : 'none';
+    }
+
+    async function executarCadastro() {
+        const nome = document.getElementById('nomeCad').value.trim();
+        const email = document.getElementById('emailCad').value.trim();
+        const senha = document.getElementById('senhaCad').value;
+        const secretaria = document.getElementById('secretariaCad').value;
+
+        if(!nome || !email || !senha) { alert("Preencha todos os campos."); return; }
+
+        const formData = new FormData();
+        formData.append("nome", nome);
+        formData.append("email", email);
+        formData.append("senha", senha);
+        formData.append("secretaria", secretaria);
+
+        try {
+            const r = await fetch(`${API_URL}/admin/registrar-fiscal`, { method: "POST", body: formData });
+            const res = await r.json();
+            if(r.ok) {
+                alert("Fiscal cadastrado com sucesso! Faça login.");
+                alternarAbas(false);
+            } else { alert(res.detail || "Erro no cadastro."); }
+        } catch(e) { alert("Erro de conexão."); }
+    }
+
+    async function executarLogin() {
+        const email = document.getElementById('emailLogin').value.trim();
+        const senha = document.getElementById('senhaLogin').value;
+
+        if(!email || !senha) { alert("Preencha e-mail e senha."); return; }
+
+        const formData = new FormData();
+        formData.append("email", email);
+        formData.append("senha", senha);
+
+        try {
+            const r = await fetch(`${API_URL}/admin/login`, { method: "POST", body: formData });
+            const res = await r.json();
+            
+            if(r.ok) {
+                // 💾 SALVAMENTO SEGURO: Armazena o Token e os privilégios na memória do navegador
+                localStorage.setItem("urbeia_token", res.token_acesso);
+                localStorage.setItem("urbeia_fiscal_nome", res.nome_fiscal);
+                localStorage.setItem("urbeia_fiscal_sec", res.secretaria_fiscal);
+                
+                // Redireciona o fiscal logado direto para o painel operacional!
+                window.location.href = "painel.html";
+            } else { alert(res.detail || "Credenciais inválidas."); }
+        } catch(e) { alert("Erro de comunicação com o servidor."); }
+    }
+</script>
+</body>
+</html>
