@@ -56,3 +56,167 @@
 </div>
 
 <div class="main-container">
+    <div class="filtro-box" id="caixaFiltroContainer">
+        <label style="font-weight: bold; color: #1e3a8a;">Filtrar por Secretaria Destinatária:</label>
+        <select id="filtroSecretaria" onchange="carregarChamadosPrefeitura()">
+            <option value="Todas">📥 Exibir Todas as Demandas</option>
+            <option value="Secretaria de Infraestrutura e Servicos Urbanos">Infraestrutura e Serviços Urbanos</option>
+            <option value="Secretaria de Trânsito e Mobilidade Urbana">Trânsito e Mobilidade Urbana</option>
+            <option value="Secretaria de Meio Ambiente e Protecao Animal">Meio Ambiente e Proteção Animal</option>
+        </select>
+    </div>
+
+    <div class="grid-chamados" id="listaContenedor"></div>
+</div>
+
+<script>
+    const API_URL = "https://urbeia-cloudrun-swct4vyilq-ew.a.run.app";
+    
+    const TOKEN = localStorage.getItem("urbeia_token");
+    const FISCAL_NOME = localStorage.getItem("urbeia_fiscal_nome");
+    const FISCAL_SEC = localStorage.getItem("urbeia_fiscal_sec");
+    const FISCAL_CARGO = localStorage.getItem("urbeia_fiscal_cargo") || "Fiscal";
+
+    if (!TOKEN) {
+        alert("Acesso restrito. Por favor, realize o login institucional.");
+        window.location.href = "login.html";
+    } else {
+        document.getElementById('labelNomeFiscal').innerText = `👤 ${FISCAL_NOME} (${FISCAL_CARGO})`;
+        document.getElementById('labelSecFiscal').innerText = FISCAL_SEC === "Todas" ? "Gestão Global Corporativa" : FISCAL_SEC;
+        
+        if (FISCAL_CARGO !== "Prefeito" && FISCAL_CARGO !== "Vice-Prefeito" && FISCAL_SEC !== "Todas") {
+            document.getElementById('caixaFiltroContainer').style.display = 'none';
+        }
+    }
+
+    // ✅ CORRIGIDO: Nome alterado de 'ejecutarLogout' para 'executarLogout'
+    function executarLogout() {
+        localStorage.clear();
+        window.location.href = "login.html";
+    }
+
+    async function carregarChamadosPrefeitura() {
+        const contenedor = document.getElementById('listaContenedor');
+        const secretariaSelecionada = (FISCAL_CARGO === "Prefeito" || FISCAL_CARGO === "Vice-Prefeito" || FISCAL_SEC === "Todas") 
+            ? document.getElementById('filtroSecretaria').value 
+            : FISCAL_SEC;
+        
+        contenedor.innerHTML = "<p style='color: #666;'>⏳ Sincronizando ocorrências criptografadas...</p>";
+        
+        try {
+            const response = await fetch(`${API_URL}/admin/ocorrencias?secretaria=${secretariaSelecionada}`, {
+                method: "GET",
+                headers: { "Authorization": `Bearer ${TOKEN}` }
+            });
+            
+            if (response.status === 401) {
+                alert("Sessão inválida ou expirada. Faça login novamente.");
+                executarLogout();
+                return;
+            }
+
+            const chamados = await response.json();
+            
+            if (chamados.length === 0) {
+                contenedor.innerHTML = "<p style='color: #666; font-weight: bold;'>📥 Nenhuma ocorrência em aberto encontrada para este escopo.</p>";
+                return;
+            }
+            
+            let htmlCards = "";
+            chamados.forEach(item => {
+                let classeStatus = "status-aberto";
+                if(item.status_chamado.includes("Fiscalizacao")) classeStatus = "status-fiscalizacao";
+                if(item.status_chamado.includes("Resolvido")) classeStatus = "status-resolvido";
+                if(item.status_chamado.includes("Superior")) classeStatus = "status-superior";
+                
+                // ✅ CORRIGIDO: Interpolação estável e correta do Google Maps
+                let linkMaps = "#";
+                if (item.localizacao && item.localizacao.coordinates) {
+                    const coords = item.localizacao.coordinates;
+                    linkMaps = `https://www.google.com/maps?q=${coords[1]},${coords[0]}`;
+                }
+
+                let tagFoto = `<div class="sem-foto">Evidência fotográfica indisponível para este registro</div>`;
+                if (item.foto_base64 && item.foto_base64.trim() !== "") {
+                    tagFoto = `<img src="data:image/jpeg;base64,${item.foto_base64}" class="foto-admin" alt="Evidência Urbana">`;
+                }
+
+                htmlCards += `
+                    <div class="card" style="border-left-color: ${classeStatus === 'status-resolvido' ? '#22c55e' : classeStatus === 'status-superior' ? '#ec4899' : '#3b82f6'}">
+                        <div>
+                            <div class="card-header">
+                                <span class="protocolo-badge">📄 ${item.protocolo}</span>
+                                <span class="status-badge ${classeStatus}">${item.status_chamado}</span>
+                            </div>
+                            
+                            ${tagFoto}
+                            
+                            <div class="card-body">
+                                <p><b>🔍 Objeto Identificado:</b> ${item.objeto_detectado} (${item.confianca.toFixed(1)}%)</p>
+                                <p><b>📍 Endereço Local:</b> ${item.endereco_local}</p>
+                                <p><b>🏛️ Responsável:</b> <span style="font-size:12px; color:#475569;">${item.encaminhado_para}</span></p>
+                                <p><b>📅 Entrada:</b> ${item.data_registro}</p>
+                                <p><b>📢 Alerta de Superior:</b> <span>${item.superior_notificado}</span></p>
+                                <p style="margin-top:10px;"><a href="${linkMaps}" target="_blank" class="maps-link">🗺️ Abrir no Google Maps</a></p>
+                            </div>
+                        </div>
+                        
+                        <div class="action-area">
+                            <label style="font-size: 13px; font-weight: bold;">Despacho Operacional:</label>
+                            <select id="status-${item.protocolo}" style="width:100%; margin-top:5px;">
+                                <option value="Aberto - Aguardando Fiscalizacao" ${item.status_chamado.includes("Aberto") ? "selected" : ""}>Aberto - Aguardando Fiscalização</option>
+                                <option value="Em Campo - Equipes em Fiscalizacao" ${item.status_chamado.includes("Campo") ? "selected" : ""}>Em Campo - Equipes em Fiscalização</option>
+                                <option value="Resolvido - Zeladoria Concluida" ${item.status_chamado.includes("Resolvido") ? "selected" : ""}>Resolvido - Zeladoria Concluída</option>
+                            </select>
+                            
+                            <textarea id="obs-${item.protocolo}" class="obs-area" placeholder="Insira o laudo técnico ou observações internas de encerramento...">${item.observacoes_internas}</textarea>
+                            
+                            <div class="checkbox-row">
+                                <input type="checkbox" id="superior-${item.protocolo}" ${item.superior_notificado === "Sim" ? "checked" : ""}>
+                                <label for="superior-${item.protocolo}">🚨 Despachar para Gabinete do Prefeito / Ouvidoria Geral</label>
+                            </div>
+                            
+                            <button class="btn-salvar" onclick="atualizarChamadoPrefeitura('${item.protocolo}')">Salvar Despacho</button>
+                        </div>
+                    </div>
+                `;
+            });
+            contenedor.innerHTML = htmlCards;
+        } catch (erro) {
+            contenedor.innerHTML = "<p style='color: #dc3545;'>❌ Falha crítica de conexão ao carregar a fila governamental.</p>";
+        }
+    }
+
+    async function atualizarChamadoPrefeitura(protocolo) {
+        const novoStatus = document.getElementById(`status-${protocolo}`).value;
+        const observacoes = document.getElementById(`obs-${protocolo}`).value.trim();
+        const encaminharSuperior = document.getElementById(`superior-${protocolo}`).checked ? "Sim" : "Não";
+        
+        const formData = new FormData();
+        formData.append("protocolo", protocolo);
+        formData.append("novo_status", novoStatus);
+        formData.append("observacoes", observacoes);
+        formData.append("encaminhar_superior", encaminharSuperior);
+        
+        try {
+            const response = await fetch(`${API_URL}/admin/atualizar-status`, {
+                method: "POST",
+                body: formData,
+                headers: { "Authorization": `Bearer ${TOKEN}` }
+            });
+            
+            if (response.ok) {
+                alert(`Protocolo ${protocolo} atualizado com sucesso no MongoDB!`);
+                carregarChamadosPrefeitura();
+            } else { 
+                alert("Operação recusada. Você não possui permissão para alterar esta demanda."); 
+            }
+        } catch (erro) { 
+            alert("Falha de comunicação de rede."); 
+        }
+    }
+
+    window.onload = carregarChamadosPrefeitura;
+</script>
+</body>
+</html>

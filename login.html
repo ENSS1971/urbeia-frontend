@@ -14,7 +14,6 @@
         select, input[type="password"], input[type="text"] { width: 100%; padding: 12px; margin-bottom: 16px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; font-size: 14px; }
         select { background: white; cursor: pointer; }
         
-        /* 📧 Caixa combinada para o E-mail Corporativo Fixo */
         .input-group-email { display: flex; align-items: center; margin-bottom: 16px; border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden; background: white; }
         .input-group-email input { flex: 1; border: none; padding: 12px; font-size: 14px; outline: none; background: transparent; margin-bottom: 0; }
         .email-sufixo { background-color: #f1f5f9; color: #475569; padding: 12px 14px; font-size: 13px; font-weight: 600; border-left: 1px solid #cbd5e1; user-select: none; white-space: nowrap; }
@@ -26,7 +25,6 @@
 </head>
 <body>
 
-<!-- CAIXA 1: FORMULÁRIO DE LOGIN -->
 <div class="login-box" id="caixaLogin">
     <h3>🏛️ UrbeIA Backoffice</h3>
     <div class="subtitle">Acesso restrito para fiscais e secretarias</div>
@@ -40,12 +38,11 @@
     <label>Senha de Acesso:</label>
     <input type="password" id="senhaLogin" placeholder="••••••••">
     
-    <button onclick="executarLogin()">Entrar no Painel</button>
+    <button onclick="executarLogin()">Entrar no Panel</button>
     
     <span class="alternar-link" onclick="alternarAbas(true)">Criar nova conta de Fiscal</span>
 </div>
 
-<!-- CAIXA 2: FORMULÁRIO DE CADASTRO -->
 <div class="login-box" id="caixaCadastro" style="display: none;">
     <h3>📋 Cadastro de Colaborador</h3>
     <div class="subtitle">Insira os dados do novo agente municipal</div>
@@ -63,7 +60,7 @@
     <input type="password" id="senhaCad" placeholder="Mínimo 6 caracteres">
 
     <label>Cargo / Nível de Acesso:</label>
-    <select id="cargoCad" onchange="ajustarExibicaoSecretaria()">
+    <select id="cargoCad" onchange="ajustarExExibicaoSecretaria()">
         <option value="Fiscal">Fiscal Técnico de Campo</option>
         <option value="Secretario">Secretário Municipal de Pasta</option>
         <option value="Vice-Prefeito">Vice-Prefeito</option>
@@ -87,7 +84,6 @@
 
 <script>
     const API_URL = "https://urbeia-cloudrun-swct4vyilq-ew.a.run.app";
-    // 🔒 Definição do domínio oficial e fixo de Volta Redonda
     const DOMINIO_MUNICIPAL = "@voltaredonda.rj.gov.br";
 
     function alternarAbas(mostrarCadastro) {
@@ -95,8 +91,7 @@
         document.getElementById('caixaCadastro').style.display = mostrarCadastro ? 'block' : 'none';
     }
 
-    // Oculta dinamicamente a secretaria se o cargo for da Gestão Executiva Majoritária
-    function ajustarExibicaoSecretaria() {
+    function ajustarExExibicaoSecretaria() {
         const cargo = document.getElementById('cargoCad').value;
         const divSec = document.getElementById('divSecretariaCad');
         if (cargo === "Prefeito" || cargo === "Vice-Prefeito") {
@@ -106,18 +101,16 @@
         }
     }
 
+    // ✅ CORRIGIDO: Nome alterado de 'ejecutarCadastro' para 'executarCadastro'
     async function executarCadastro() {
         const nome = document.getElementById('nomeCad').value.trim();
         const usuario = document.getElementById('usuarioCad').value.trim().toLowerCase();
         const senha = document.getElementById('senhaCad').value;
         const cargo = document.getElementById('cargoCad').value;
-        
-        // Se for Prefeito ou Vice, o escopo de visualização padrão enviado é "Todas"
         const secretaria = (cargo === "Prefeito" || cargo === "Vice-Prefeito") ? "Todas" : document.getElementById('secretariaCad').value;
 
         if (!nome || !usuario || !senha) { alert("Preencha todos os campos."); return; }
 
-        // Concatena o domínio cinza fixo ao usuário antes do envio
         const emailInstitucionalCompleto = usuario + DOMINIO_MUNICIPAL;
 
         const formData = new FormData();
@@ -125,7 +118,7 @@
         formData.append("email", emailInstitucionalCompleto);
         formData.append("senha", senha);
         formData.append("secretaria", secretaria);
-        formData.append("cargo", cargo); // ✅ Enviando o cargo mapeado
+        formData.append("cargo", cargo);
 
         try {
             const r = await fetch(`${API_URL}/admin/registrar-fiscal`, { method: "POST", body: formData });
@@ -137,7 +130,8 @@
         } catch (e) { alert("Erro de conexão."); }
     }
 
-    async function ejecutarLogin() {
+    // ✅ CORRIGIDO: Nome alterado de 'ejecutarLogin' para 'executarLogin'
+    async function executarLogin() {
         const usuario = document.getElementById('usuarioLogin').value.trim().toLowerCase();
         const senha = document.getElementById('senhaLogin').value;
 
@@ -153,11 +147,10 @@
             const res = await r.json();
             
             if (r.ok) {
-                // 💾 Persiste as chaves e os privilégios hierárquicos no navegador
                 localStorage.setItem("urbeia_token", res.token_acesso);
                 localStorage.setItem("urbeia_fiscal_nome", res.nome_fiscal);
                 localStorage.setItem("urbeia_fiscal_sec", res.secretaria_fiscal);
-                localStorage.setItem("urbeia_fiscal_cargo", res.cargo_fiscal); // ✅ Gravando o Cargo hierárquico
+                localStorage.setItem("urbeia_fiscal_cargo", res.cargo_fiscal);
                 
                 window.location.href = "painel.html";
             } else { alert(res.detail || "Usuário ou senha incorretos."); }
