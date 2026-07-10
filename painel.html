@@ -89,7 +89,6 @@
         }
     }
 
-    // ✅ CORRIGIDO: Nome alterado de 'ejecutarLogout' para 'executarLogout'
     function executarLogout() {
         localStorage.clear();
         window.location.href = "login.html";
@@ -129,7 +128,6 @@
                 if(item.status_chamado.includes("Resolvido")) classeStatus = "status-resolvido";
                 if(item.status_chamado.includes("Superior")) classeStatus = "status-superior";
                 
-                // ✅ CORRIGIDO: Interpolação estável e correta do Google Maps
                 let linkMaps = "#";
                 if (item.localizacao && item.localizacao.coordinates) {
                     const coords = item.localizacao.coordinates;
@@ -154,7 +152,7 @@
                             <div class="card-body">
                                 <p><b>🔍 Objeto Identificado:</b> ${item.objeto_detectado} (${item.confianca.toFixed(1)}%)</p>
                                 <p><b>📍 Endereço Local:</b> ${item.endereco_local}</p>
-                                <p><b>🏛️ Responsável:</b> <span style="font-size:12px; color:#475569;">${item.encaminhado_para}</span></p>
+                                <p><b>🏛️ Responsável Atual:</b> <span style="font-size:12px; color:#1e3a8a; font-weight:600;">${item.encaminhado_para}</span></p>
                                 <p><b>📅 Entrada:</b> ${item.data_registro}</p>
                                 <p><b>📢 Alerta de Superior:</b> <span>${item.superior_notificado}</span></p>
                                 <p style="margin-top:10px;"><a href="${linkMaps}" target="_blank" class="maps-link">🗺️ Abrir no Google Maps</a></p>
@@ -162,7 +160,14 @@
                         </div>
                         
                         <div class="action-area">
-                            <label style="font-size: 13px; font-weight: bold;">Despacho Operacional:</label>
+                            <label style="font-size: 13px; font-weight: bold; color: #475569; display: block; margin-bottom: 4px;">Alterar Secretaria Responsável:</label>
+                            <select id="secretaria-${item.protocolo}" style="width:100%; margin-bottom:12px;">
+                                <option value="Secretaria de Infraestrutura e Servicos Urbanos" ${item.encaminhado_para.includes("Infraestrutura") ? "selected" : ""}>Infraestrutura e Serviços Urbanos</option>
+                                <option value="Secretaria de Trânsito e Mobilidade Urbana" ${item.encaminhado_para.includes("Trânsito") ? "selected" : ""}>Trânsito e Mobilidade Urbana</option>
+                                <option value="Secretaria de Meio Ambiente e Protecao Animal" ${item.encaminhado_para.includes("Meio Ambiente") ? "selected" : ""}>Meio Ambiente e Proteção Animal</option>
+                            </select>
+
+                            <label style="font-size: 13px; font-weight: bold;">Mudar Status Operacional:</label>
                             <select id="status-${item.protocolo}" style="width:100%; margin-top:5px;">
                                 <option value="Aberto - Aguardando Fiscalizacao" ${item.status_chamado.includes("Aberto") ? "selected" : ""}>Aberto - Aguardando Fiscalização</option>
                                 <option value="Em Campo - Equipes em Fiscalizacao" ${item.status_chamado.includes("Campo") ? "selected" : ""}>Em Campo - Equipes em Fiscalização</option>
@@ -191,12 +196,15 @@
         const novoStatus = document.getElementById(`status-${protocolo}`).value;
         const observacoes = document.getElementById(`obs-${protocolo}`).value.trim();
         const encaminharSuperior = document.getElementById(`superior-${protocolo}`).checked ? "Sim" : "Não";
+        // ✅ NOVO: Captura o valor da secretaria selecionada no dropdown do cartão
+        const novaSecretaria = document.getElementById(`secretaria-${protocolo}`).value;
         
         const formData = new FormData();
         formData.append("protocolo", protocolo);
         formData.append("novo_status", novoStatus);
         formData.append("observacoes", observacoes);
         formData.append("encaminhar_superior", encaminharSuperior);
+        formData.append("nova_secretaria", novaSecretaria); // ✅ NOVO: Enviando a secretaria via HTTP
         
         try {
             const response = await fetch(`${API_URL}/admin/atualizar-status`, {
@@ -207,7 +215,7 @@
             
             if (response.ok) {
                 alert(`Protocolo ${protocolo} atualizado com sucesso no MongoDB!`);
-                carregarChamadosPrefeitura();
+                carregarChamadosPrefeitura(); // Recarrega a fila aplicando os novos filtros instantaneamente
             } else { 
                 alert("Operação recusada. Você não possui permissão para alterar esta demanda."); 
             }
